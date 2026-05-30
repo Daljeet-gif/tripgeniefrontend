@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
-import { useTrip } from "../context/TripContext";
+import { useTrip } from "../context/useTrip";
 import { useNavigate } from "react-router-dom";
+import Navigation from "../components/Navigation";
 
 const INTERESTS = [
     { id: "beaches", label: "Beaches", icon: "🏖️" },
@@ -27,12 +28,10 @@ function Divider() {
     return <div className="h-px bg-white/[0.07] my-6" />;
 }
 
-export default function Home({ onSubmit }) {
-    const [form, setForm] = useState({ location: "", days: 3, budget: "", interests: [] });
+export default function Home() {
+    const [form, setForm] = useState({ location: "", days: 3, budget: "", interests: [], fromCity: "" });
     const [customInterests, setCustomInterests] = useState([]);
     const [customInput, setCustomInput] = useState("");
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState("");
     const customInputRef = useRef(null);
 
     const toggleInterest = (id) =>
@@ -71,24 +70,45 @@ export default function Home({ onSubmit }) {
         .map((id) => allInterests.find((i) => i.id === id)?.label)
         .filter(Boolean);
 
-    const { generateTrip, loading, error } = useTrip();
+
     const navigate = useNavigate();
 
-    const handleSubmit = async () => {
-        const payload = {
-            location: form.location,
-            days: form.days,
-            budget: form.budget,
-            interests: selectedLabels
-        };
+const { generateTrip, loading, error, clearTrip } = useTrip();
 
-        await generateTrip(payload);
-
-        navigate("/result");
+const handleSubmit = async () => {
+    if (!form.location.trim()) return;
+    clearTrip(); // ✅ clear old trip before generating new one
+    const payload = {
+        location: form.location,
+        days: form.days,
+        budget: form.budget,
+        interests: selectedLabels,
+        fromCity: form.fromCity,
     };
+    await generateTrip(payload);
+    
+    // Save trip to localStorage for recent trips
+    const tripData = {
+        id: Date.now(),
+        location: form.location,
+        days: form.days,
+        budget: form.budget,
+        interests: selectedLabels,
+        fromCity: form.fromCity,
+        createdAt: new Date().toISOString()
+    };
+    
+    const existingTrips = JSON.parse(localStorage.getItem("recentTrips") || "[]");
+    const updatedTrips = [tripData, ...existingTrips].slice(0, 20); // Keep last 20 trips
+    localStorage.setItem("recentTrips", JSON.stringify(updatedTrips));
+    
+    navigate("/result");
+};
 
     return (
-        <div className="font-body min-h-screen  flex items-center justify-center px-4 py-12 relative overflow-hidden">
+        <>
+            <Navigation />
+            <div className="font-body min-h-screen flex items-center justify-center px-4 py-12 relative overflow-hidden md:ml-64 pt-20 md:pt-12">
 
             {/* Ambient blobs */}
             <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden>
@@ -102,14 +122,14 @@ export default function Home({ onSubmit }) {
             <div className="animate-fadeUp relative z-10 w-full max-w-[600px] bg-[#161616] border border-white/[0.08] rounded-3xl p-8 md:p-10 shadow-2xl">
 
                 {/* Header */}
-                <p className="text-[11px] tracking-[.18em] uppercase text-white text-gold font-medium mb-2 font-body">
+                <p className="text-[11px] tracking-[.18em] uppercase text-gold font-medium mb-2 font-body">
                     AI Travel Planner
                 </p>
                 <h1 className="font-display text-[2.6rem] md:text-5xl font-light text-white leading-[1.1] mb-2">
                     Plan your<br />perfect trip
                 </h1>
                 <p className="text-sm text-white/40 font-light mb-8 leading-relaxed font-body">
-                    Tell us where you're headed — we'll handle the rest.
+                    Tell us where you&apos;re headed — we&apos;ll handle the rest.
                 </p>
 
                 {/* ── Destination ── */}
@@ -152,18 +172,18 @@ export default function Home({ onSubmit }) {
                 <SectionLabel>Budget</SectionLabel>
                 <div className="relative">
                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40 text-[15px] font-body pointer-events-none">
-                        $
+                        ₹
                     </span>
                     <input
                         type="text"
-                        placeholder="e.g. 100/day, 500 total, luxury..."
+                        placeholder="e.g. 1000/day, 5000 total, luxury..."
                         value={form.budget}
                         onChange={(e) => setForm({ ...form, budget: e.target.value })}
                         className="w-full bg-white/[0.04] border border-white/10 rounded-xl pl-8 pr-4 py-[14px] text-[15px] text-white placeholder-white/25 outline-none font-body transition-all duration-200 focus:border-gold/50 focus:bg-gold/[0.03]"
                     />
                 </div>
                 <p className="text-[11px] text-white/25 mt-2 font-light font-body">
-                    Enter a daily amount, total budget, or describe it (e.g. "backpacker", "luxury")
+                    Enter a daily amount, total budget, or describe it (e.g. &quot;backpacker&quot;, &quot;luxury&quot;)
                 </p>
 
                 <Divider />
@@ -237,6 +257,21 @@ export default function Home({ onSubmit }) {
 
                 <Divider />
 
+                {/* ── Current City (for budget estimate) ── */}
+                <SectionLabel>Your Current City <span className="normal-case text-white/25 tracking-normal">(optional)</span></SectionLabel>
+                <input
+                    type="text"
+                    placeholder="e.g. Delhi, Mumbai, Ludhiana..."
+                    value={form.fromCity}
+                    onChange={(e) => setForm({ ...form, fromCity: e.target.value })}
+                    className="w-full bg-white/[0.04] border border-white/10 rounded-xl px-4 py-[14px] text-[15px] text-white placeholder-white/25 outline-none font-body transition-all duration-200 focus:border-gold/50 focus:bg-gold/[0.03]"
+                />
+                <p className="text-[11px] text-white/25 mt-2 font-light font-body">
+                    Used to estimate travel cost &amp; distance from your location
+                </p>
+
+                <Divider />
+
                 {/* Error */}
                 {error && (
                     <div className="mb-5 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-[13px] font-body">
@@ -247,7 +282,7 @@ export default function Home({ onSubmit }) {
                 {/* Submit */}
                 <button
                     onClick={handleSubmit}
-                    disabled={loading}
+                    disabled={loading || !form.location.trim()}
                     style={{ background: "linear-gradient(135deg, #c99b5a 0%, #a87c3e 100%)" }}
                     className="w-full py-4 rounded-2xl text-[15px] font-medium tracking-wide text-[#0d0d0d] font-body transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:translate-y-0"
                 >
@@ -264,5 +299,6 @@ export default function Home({ onSubmit }) {
                 </p>
             </div>
         </div>
+        </>
     );
 }

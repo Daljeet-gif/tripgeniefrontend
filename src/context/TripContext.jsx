@@ -1,41 +1,44 @@
 import { useState } from "react";
-import { createContext } from "react";
 import { planTripAPI } from "../services/api";
-import { useContext } from "react";
+import { TripContext } from "./tripContextValue";
 
-
-
-const TripContext = createContext();
-
-export const TripProvider = ({ childer }) => {
-    const [trip, setTrip] = useState(null);
+export const TripProvider = ({ children }) => {
+    // ✅ Load from sessionStorage on init
+    const [trip, setTrip] = useState(() => {
+        try {
+            const saved = sessionStorage.getItem("tripgenie_trip");
+            return saved ? JSON.parse(saved) : null;
+        } catch {
+            return null;
+        }
+    });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
-
 
     const generateTrip = async (formData) => {
         setLoading(true);
         setError("");
-
         try {
             const res = await planTripAPI(formData);
-            setTrip(res.data.trip);
-
-        } catch (error) {
+            const tripData = res.data.trip;
+            setTrip(tripData);
+            // ✅ Save to sessionStorage so refresh works
+            sessionStorage.setItem("tripgenie_trip", JSON.stringify(tripData));
+        } catch {
             setError('Failed to generate Trip');
-
         } finally {
-            setLoading(false)
+            setLoading(false);
         }
     };
 
+    const clearTrip = () => {
+        setTrip(null);
+        sessionStorage.removeItem("tripgenie_trip");
+    };
+
     return (
-        <TripContext.Provider value={{ trip, loading, error, generateTrip }}>
-            {childer}
+        <TripContext.Provider value={{ trip, loading, error, generateTrip, clearTrip }}>
+            {children}
         </TripContext.Provider>
-    )
-
-
-}
-
-export const useTrip = () => useContext(TripContext);
+    );
+};

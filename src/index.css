@@ -1,4 +1,17 @@
 @import "tailwindcss";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+* {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  min-height: 100vh;
+  background-color: #0d0d0d;
+  color: white;
+  margin: 0;
+  padding: 0;
+}
