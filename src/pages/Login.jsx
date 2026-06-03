@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import axios from "axios";
 import Navigation from "../components/Navigation";
+import { useAuth } from "../context/AuthContext";
 
 export default function Login() {
   const navigate = useNavigate();
+  const { login } = useAuth();
   const [form, setForm] = useState({ email: "", password: "" });
   const [errors, setErrors] = useState({});
   const [showPassword, setShowPassword] = useState(false);
@@ -32,12 +33,7 @@ export default function Login() {
     if (Object.keys(errs).length) return setErrors(errs);
     try {
       setLoading(true);
-      const { data } = await axios.post(
-        `${import.meta.env.VITE_API_URL}/api/users/login`,
-        form,
-        { withCredentials: true }
-      );
-      localStorage.setItem("accessToken", data.accessToken);
+      await login(form.email, form.password);
       navigate("/");
     } catch (err) {
       setServerError(err.response?.data?.message || "Something went wrong.");
@@ -60,7 +56,7 @@ export default function Login() {
       </div>
 
       {/* Card */}
-      <div className="animate-fadeUp relative z-10 w-full max-w-[440px] bg-[#161616] border border-white/[0.08] rounded-3xl p-8 md:p-10 shadow-2xl">
+      <div className="animate-fadeUp relative z-10 w-full max-w-[440px] bg-[#161616] md:border md:border-white/[0.08] rounded-3xl p-8 md:p-10 md:shadow-2xl">
 
         {/* Header */}
         <p className="text-[11px] tracking-[.18em] uppercase text-gold font-medium mb-2 font-body">
@@ -170,7 +166,7 @@ export default function Login() {
         </button>
 
         <p className="text-center mt-6 text-[12px] text-white/30 font-light font-body">
-          Don't have an account?{" "}
+          Don&apos;t have an account?{" "}
           <Link to="/register" className="text-gold/80 hover:text-gold transition-colors">
             Create one
           </Link>

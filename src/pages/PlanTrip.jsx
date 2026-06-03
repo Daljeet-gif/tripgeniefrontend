@@ -1,7 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { useTrip } from "../context/useTrip";
 import { useNavigate } from "react-router-dom";
 import Navigation from "../components/Navigation";
+import InteractiveMap from "../components/InteractiveMap";
+import ChatAssistant from "../components/ChatAssistant";
+import { PackingList, LocalInfo, ShareExportBar } from "../components/TripExtras";
+import { parseItinerary, SLOT_ICONS, SLOT_COLORS } from "../utils/parseItinerary";
 
 // ── tiny helpers ──────────────────────────────────────────────
 function Badge({ children, gold }) {
@@ -66,57 +70,6 @@ function WeatherCard({ data }) {
         </Card>
     );
 }
-
-// ── Itinerary parser ──────────────────────────────────────────
-function parseItinerary(raw) {
-    if (!raw) return [];
-    const days = [];
-
-    // ✅ Split on "Day N:" anywhere in the text (handles intro paragraphs)
-    const dayBlocks = raw.split(/(?=\nDay \d+[:\s])/);
-
-    dayBlocks.forEach(block => {
-        const lines = block.trim().split("\n");
-
-        // Find the line that starts with "Day N"
-        const titleLineIndex = lines.findIndex(l => /^Day \d+/.test(l));
-        if (titleLineIndex === -1) return; // skip intro paragraph
-
-        const titleLine = lines[titleLineIndex];
-        const dayMatch = titleLine.match(/Day (\d+)[:\s]*(.*)?/);
-        if (!dayMatch) return;
-
-        const dayNum = parseInt(dayMatch[1]);
-        // ✅ Strip both straight and curly quotes
-        const theme = dayMatch[2]?.replace(/["""'']/g, "").trim() || "";
-
-        const slots = [];
-        let currentSlot = null;
-
-        lines.slice(titleLineIndex + 1).forEach(line => {
-            // ✅ Match slot headers with or without emoji
-            const slotMatch = line.match(/(Morning|Afternoon|Evening):/);
-            if (slotMatch) {
-                if (currentSlot) slots.push(currentSlot);
-                currentSlot = { label: slotMatch[1], items: [] };
-            } else if (currentSlot && line.trim().startsWith("-")) {
-                const clean = line.replace(/^\s*-\s*/, "").trim();
-                if (clean) currentSlot.items.push(clean);
-            }
-        });
-
-        if (currentSlot) slots.push(currentSlot);
-        days.push({ dayNum, theme, slots });
-    });
-
-    return days;
-}
-const SLOT_ICONS = { Morning: "🌅", Afternoon: "☀️", Evening: "🌙" };
-const SLOT_COLORS = {
-    Morning: "from-amber-500/10 to-transparent border-amber-500/20",
-    Afternoon: "from-orange-400/10 to-transparent border-orange-400/20",
-    Evening: "from-indigo-400/10 to-transparent border-indigo-400/20",
-};
 
 function ItineraryDay({ day, index }) {
     const [open, setOpen] = useState(index === 0);
@@ -233,9 +186,7 @@ export default function PlanTrip() {
     const { trip, loading, error } = useTrip();
     const navigate = useNavigate();
     const days = parseItinerary(trip?.itinerary);
-console.log("trip data:", trip);
-console.log("itinerary:", trip?.itinerary);
-console.log("parsed days:", days);
+
     // Loading state
     if (loading) return (
         <div className="min-h-screen flex flex-col items-center justify-center gap-6 px-4">
@@ -314,17 +265,12 @@ console.log("parsed days:", days);
                 </div>
 
                 {/* ── Map ── */}
-                {trip.mapData?.staticMapUrl && (
+                {trip.mapData?.center && trip.mapData.markers?.length > 0 ? (
                     <div className="mb-8 rounded-2xl overflow-hidden border border-white/[0.08] shadow-2xl">
-                        <img
-                            src={trip.mapData.staticMapUrl}
-                            alt={`Map of ${trip.location}`}
-                            className="w-full object-cover"
-                            onError={(e) => e.currentTarget.parentElement.style.display = 'none'}
-                        />
+                        <InteractiveMap center={trip.mapData.center} markers={trip.mapData.markers} />
                         <div className="px-5 py-3 bg-[#161616] border-t border-white/[0.06] flex items-center gap-2 flex-wrap">
                             <span className="text-[10px] text-white/25 uppercase tracking-widest font-body">
-                                {trip.mapData.markers?.length} locations mapped
+                                {trip.mapData.markers?.length} locations mapped · tap a pin
                             </span>
                             <div className="flex flex-wrap gap-1 ml-auto">
                                 {[...new Set(trip.mapData.markers?.map(m => m.city))].map(city => (
@@ -333,7 +279,21 @@ console.log("parsed days:", days);
                             </div>
                         </div>
                     </div>
+                ) : trip.mapData?.staticMapUrl && (
+                    <div className="mb-8 rounded-2xl overflow-hidden border border-white/[0.08] shadow-2xl">
+                        <img
+                            src={trip.mapData.staticMapUrl}
+                            alt={`Map of ${trip.location}`}
+                            className="w-full object-cover"
+                            onError={(e) => e.currentTarget.parentElement.style.display = 'none'}
+                        />
+                    </div>
                 )}
+
+                {/* ── Share & Export ── */}
+                <div className="mb-8">
+                    <ShareExportBar trip={trip} />
+                </div>
 
                 {/* ── Itinerary ── */}
                 <div className="mb-8">
@@ -371,22 +331,47 @@ console.log("parsed days:", days);
                     </div>
                 )}
 
+                {/* ── Packing list ── */}
+                {trip._id && (
+                    <div className="mb-8">
+                        <PackingList tripId={trip._id} />
+                    </div>
+                )}
+
+                {/* ── Local info ── */}
+                {trip._id && (
+                    <div className="mb-8">
+                        <LocalInfo tripId={trip._id} />
+                    </div>
+                )}
+
                 {/* ── Footer ── */}
                 <div className="text-center mt-10 pt-6 border-t border-white/[0.06]">
-                    <button
-                        onClick={() => navigate("/")}
-                        style={{ background: "linear-gradient(135deg, #c99b5a 0%, #a87c3e 100%)" }}
-                        className="px-8 py-3.5 rounded-2xl text-[14px] font-medium text-[#0d0d0d] font-body transition-all hover:-translate-y-0.5"
-                    >
-                        Plan Another Trip →
-                    </button>
+                    <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+                        <button
+                            onClick={() => navigate("/")}
+                            style={{ background: "linear-gradient(135deg, #c99b5a 0%, #a87c3e 100%)" }}
+                            className="px-8 py-3.5 rounded-2xl text-[14px] font-medium text-[#0d0d0d] font-body transition-all hover:-translate-y-0.5"
+                        >
+                            Plan Another Trip →
+                        </button>
+                        <button
+                            onClick={() => navigate("/recent-trips")}
+                            className="px-8 py-3.5 rounded-2xl border border-gold/30 bg-gold/5 text-gold/80 text-[14px] font-medium font-body transition-all hover:bg-gold/10 hover:text-gold"
+                        >
+                            View Saved Trips
+                        </button>
+                    </div>
                     <p className="text-center mt-4 text-[11px] text-white/20 font-light font-body">
-                        Powered by Claude AI · TripGenie
+                        Powered by Groq AI · TripGenie
                     </p>
                 </div>
 
             </div>
-        </div>
+            </div>
+
+            {/* AI chat assistant */}
+            {trip._id && <ChatAssistant tripId={trip._id} seed={trip.chat || []} />}
         </>
     );
 }

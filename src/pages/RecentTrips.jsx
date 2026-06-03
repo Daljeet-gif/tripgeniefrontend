@@ -1,12 +1,16 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Navigation from "../components/Navigation";
+import { getUserTripsAPI, deleteTripAPI } from "../services/api";
+import { useTrip } from "../context/useTrip";
 
 export default function RecentTrips() {
   const navigate = useNavigate();
+  const { openTrip } = useTrip();
   const [trips, setTrips] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [filteredTrips, setFilteredTrips] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadTrips();
@@ -24,33 +28,40 @@ export default function RecentTrips() {
     }
   }, [searchQuery, trips]);
 
-  const loadTrips = () => {
-    const savedTrips = localStorage.getItem("recentTrips");
-    if (savedTrips) {
-      const parsed = JSON.parse(savedTrips);
-      setTrips(parsed);
-      setFilteredTrips(parsed);
+  const loadTrips = async () => {
+    try {
+      const response = await getUserTripsAPI();
+      setTrips(response.data.trips);
+      setFilteredTrips(response.data.trips);
+    } catch (error) {
+      console.error("Failed to load trips:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleViewTrip = (trip) => {
-    // Store the trip in context to view it
-    navigate("/result", { state: { trip } });
+    openTrip(trip);          // load into context + sessionStorage
+    navigate("/result");
   };
 
-  const handleDeleteTrip = (tripId) => {
-    const updated = trips.filter(t => t.id !== tripId);
-    setTrips(updated);
-    setFilteredTrips(updated);
-    localStorage.setItem("recentTrips", JSON.stringify(updated));
-  };
-
-  const handleClearAll = () => {
-    if (confirm("Are you sure you want to clear all trip history?")) {
-      setTrips([]);
-      setFilteredTrips([]);
-      localStorage.removeItem("recentTrips");
+  const handleDeleteTrip = async (tripId) => {
+    try {
+      await deleteTripAPI(tripId);
+    } catch (err) {
+      console.error("Delete failed:", err);
     }
+    setTrips((prev) => prev.filter((t) => t._id !== tripId));
+  };
+
+  const handleClearAll = async () => {
+    if (!confirm("Are you sure you want to delete all saved trips? This cannot be undone.")) return;
+    try {
+      await Promise.all(trips.map((t) => deleteTripAPI(t._id)));
+    } catch (err) {
+      console.error("Clear all failed:", err);
+    }
+    setTrips([]);
   };
 
   return (
@@ -97,7 +108,11 @@ export default function RecentTrips() {
         </div>
 
         {/* Trips List */}
-        {filteredTrips.length === 0 ? (
+        {loading ? (
+          <div className="bg-[#161616] border border-white/[0.08] rounded-3xl p-8 md:p-10 shadow-2xl text-center">
+            <p className="text-white/30 font-body">Loading trips...</p>
+          </div>
+        ) : filteredTrips.length === 0 ? (
           <div className="bg-[#161616] border border-white/[0.08] rounded-3xl p-8 md:p-10 shadow-2xl text-center">
             <p className="text-4xl mb-4">✈️</p>
             <p className="text-white/30 font-body mb-2">
@@ -129,7 +144,7 @@ export default function RecentTrips() {
             <div className="space-y-4">
               {filteredTrips.map((trip) => (
                 <div
-                  key={trip.id}
+                  key={trip._id}
                   className="bg-[#161616] border border-white/[0.08] rounded-2xl p-6 hover:border-gold/30 transition-all duration-200"
                 >
                   <div className="flex items-start justify-between gap-4">
@@ -171,7 +186,7 @@ export default function RecentTrips() {
                         View
                       </button>
                       <button
-                        onClick={() => handleDeleteTrip(trip.id)}
+                        onClick={() => handleDeleteTrip(trip._id)}
                         className="px-3 py-2 rounded-lg border border-red-500/20 bg-red-500/5 text-red-400/70 text-[12px] font-body transition-all hover:bg-red-500/10 hover:text-red-400"
                       >
                         Delete

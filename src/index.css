@@ -15,3 +15,38 @@ html, body, #root {
   margin: 0;
   padding: 0;
 }
+
+/* ── Print / Save-as-PDF styles ──────────────────────────────── */
+@media print {
+  /* Hide sidebar nav, mobile button, floating chat, ambient blobs */
+  aside.sidebar,
+  .mobile-menu-button,
+  [aria-hidden="true"],
+  .print\:hidden {
+    display: none !important;
+  }
+
+  /* Remove the sidebar offset and dark theme for clean paper output */
+  .md\:ml-64 {
+    margin-left: 0 !important;
+  }
+
+  html, body, #root {
+    background: #ffffff !important;
+    color: #111 !important;
+  }
+
+  .bg-\[\#161616\],
+  .bg-\[\#111\],
+  .bg-\[\#0d0d0d\] {
+    background: #fff !important;
+    border-color: #ddd !important;
+  }
+
+  .text-white,
+  .text-white\/85,
+  .text-white\/75,
+  .text-white\/60 {
+    color: #111 !important;
+  }
+}

@@ -31,13 +31,19 @@ export const TripProvider = ({ children }) => {
         }
     };
 
+    // Open an existing (already-saved) trip — used from Recent Trips.
+    const openTrip = (tripData) => {
+        setTrip(tripData);
+        sessionStorage.setItem("tripgenie_trip", JSON.stringify(tripData));
+    };
+
     const clearTrip = () => {
         setTrip(null);
         sessionStorage.removeItem("tripgenie_trip");
     };
 
     return (
-        <TripContext.Provider value={{ trip, loading, error, generateTrip, clearTrip }}>
+        <TripContext.Provider value={{ trip, loading, error, generateTrip, openTrip, clearTrip }}>
             {children}
         </TripContext.Provider>
     );

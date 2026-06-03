@@ -119,7 +119,7 @@ const handleSubmit = async () => {
             </div>
 
             {/* Card */}
-            <div className="animate-fadeUp relative z-10 w-full max-w-[600px] bg-[#161616] border border-white/[0.08] rounded-3xl p-8 md:p-10 shadow-2xl">
+            <div className="animate-fadeUp relative z-10 w-full max-w-[600px] bg-[#161616] md:border md:border-white/[0.08] rounded-3xl p-8 md:p-10 md:shadow-2xl">
 
                 {/* Header */}
                 <p className="text-[11px] tracking-[.18em] uppercase text-gold font-medium mb-2 font-body">
@@ -295,7 +295,7 @@ const handleSubmit = async () => {
                 </button>
 
                 <p className="text-center mt-4 text-[11px] text-white/20 font-light font-body">
-                    Powered by Claude AI · TripGenie
+                    Powered by Groq AI · TripGenie
                 </p>
             </div>
         </div>

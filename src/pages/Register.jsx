@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import axios from "axios";
 import Navigation from "../components/Navigation";
+import { useAuth } from "../context/AuthContext";
 
 export default function Register() {
   const navigate = useNavigate();
+  const { register } = useAuth();
   const [form, setForm] = useState({ name: "", email: "", password: "", confirm: "" });
   const [errors, setErrors] = useState({});
   const [showPassword, setShowPassword] = useState(false);
@@ -56,10 +57,7 @@ export default function Register() {
     if (Object.keys(errs).length) return setErrors(errs);
     try {
       setLoading(true);
-      await axios.post(
-        `${import.meta.env.VITE_API_URL}/api/users/register`,
-        { name: form.name, email: form.email, password: form.password }
-      );
+      await register(form.name, form.email, form.password);
       navigate("/login", { state: { registered: true } });
     } catch (err) {
       setServerError(err.response?.data?.message || "Something went wrong.");
@@ -87,7 +85,7 @@ export default function Register() {
       </div>
 
       {/* Card */}
-      <div className="animate-fadeUp relative z-10 w-full max-w-[440px] bg-[#161616] border border-white/[0.08] rounded-3xl p-8 md:p-10 shadow-2xl">
+      <div className="animate-fadeUp relative z-10 w-full max-w-[440px] bg-[#161616] md:border md:border-white/[0.08] rounded-3xl p-8 md:p-10 md:shadow-2xl">
 
         {/* Header */}
         <p className="text-[11px] tracking-[.18em] uppercase text-gold font-medium mb-2 font-body">

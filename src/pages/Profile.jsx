@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
 import Navigation from "../components/Navigation";
+import { getProfileAPI, updateProfileAPI, deleteAccountAPI } from "../services/api";
 
 export default function Profile() {
   const navigate = useNavigate();
@@ -18,18 +18,14 @@ export default function Profile() {
 
   const fetchProfile = async () => {
     try {
-      const token = localStorage.getItem("accessToken");
-      if (!token) {
+      if (!localStorage.getItem("accessToken")) {
         navigate("/login");
         return;
       }
-      const { data } = await axios.get(
-        `${import.meta.env.VITE_API_URL}/api/users/profile`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const { data } = await getProfileAPI();
       setUser(data.user);
       setForm({ name: data.user.name, email: data.user.email });
-    } catch (err) {
+    } catch {
       setMessage("Failed to load profile");
     } finally {
       setLoading(false);
@@ -40,12 +36,7 @@ export default function Profile() {
     e.preventDefault();
     try {
       setUpdating(true);
-      const token = localStorage.getItem("accessToken");
-      await axios.put(
-        `${import.meta.env.VITE_API_URL}/api/users/profile`,
-        form,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await updateProfileAPI(form);
       setMessage("Profile updated successfully!");
       setUser({ ...user, ...form });
       setTimeout(() => setMessage(""), 3000);
@@ -58,14 +49,10 @@ export default function Profile() {
 
   const handleDelete = async () => {
     try {
-      const token = localStorage.getItem("accessToken");
-      await axios.delete(
-        `${import.meta.env.VITE_API_URL}/api/users/profile`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await deleteAccountAPI(user._id || user.id);
       localStorage.removeItem("accessToken");
       navigate("/register");
-    } catch (err) {
+    } catch {
       setMessage("Failed to delete account");
     }
   };

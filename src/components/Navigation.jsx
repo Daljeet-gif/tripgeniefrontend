@@ -1,31 +1,19 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
-import axios from "axios";
+import { useAuth } from "../context/AuthContext";
 
 export default function Navigation() {
   const location = useLocation();
-  const token = localStorage.getItem("accessToken");
-  const [userName, setUserName] = useState("User");
+  const navigate = useNavigate();
+  const { user, isAuthenticated, logout } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const isActive = (path) => location.pathname === path;
 
-  useEffect(() => {
-    const fetchUserName = async () => {
-      if (token) {
-        try {
-          const { data } = await axios.get(
-            `${import.meta.env.VITE_API_URL}/api/users/profile`,
-            { headers: { Authorization: `Bearer ${token}` } }
-          );
-          setUserName(data.user.name);
-        } catch (err) {
-          console.error("Failed to fetch user name");
-        }
-      }
-    };
-    fetchUserName();
-  }, [token]);
+  const handleLogout = async () => {
+    await logout();
+    navigate("/login");
+  };
 
   // Close mobile menu when route changes
   useEffect(() => {
@@ -115,19 +103,27 @@ export default function Navigation() {
 
         {/* User Section */}
         <div className="p-4 border-t border-white/[0.06]">
-          {token ? (
-            <Link
-              to="/profile"
-              className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] transition-all"
-            >
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-gold/20 to-gold/10 flex items-center justify-center">
-                <span className="text-gold text-sm">👤</span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm text-white font-body truncate">{userName}</p>
-                <p className="text-[11px] text-white/40 font-body">Free Plan</p>
-              </div>
-            </Link>
+          {isAuthenticated && user ? (
+            <div className="space-y-2">
+              <Link
+                to="/profile"
+                className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] transition-all"
+              >
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-gold/20 to-gold/10 flex items-center justify-center">
+                  <span className="text-gold text-sm">👤</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-white font-body truncate">{user.name}</p>
+                  <p className="text-[11px] text-white/40 font-body">Free Plan</p>
+                </div>
+              </Link>
+              <button
+                onClick={handleLogout}
+                className="block w-full px-4 py-3 rounded-xl text-center text-sm text-white/60 hover:bg-white/[0.04] hover:text-white font-body transition-all"
+              >
+                Sign Out
+              </button>
+            </div>
           ) : (
             <div className="space-y-2">
               <Link
